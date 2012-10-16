@@ -2,6 +2,10 @@
 
 require 'git'
 
+# This is merely an abstract layer to Git to enable me to switch to
+# any other underlying lib' that would do the job
+# ... And present exactly what i need of Git in a convenient way
+
 module Git
 
   class Trifle
@@ -9,7 +13,9 @@ module Git
     attr_reader :layer
 
     def cover(options)
-      @layer = Git::Base.open options[:path]
+      # handler
+      # Raise ?
+      @layer = Git::Base.open options[:path] if can_cover?(options[:path])
     end
 
     def clone(options)
@@ -27,16 +33,21 @@ module Git
       remote = options.delete :remote
       remote_name = options.delete(:remote_name) { |k| 'origin' }
 
+      # i like tap
+      # set the remote if we have it
       @layer = Git.init(path, options).tap do |git|
         git.add_remote remote_name, remote if remote
       end
     end
 
     def reset(*args)
+      # mere delegation here
       layer.reset *args
     end
 
     def working_directory
+      # explanation here ?
+      # Really ?
       layer.dir.to_s
     end
 
@@ -46,14 +57,19 @@ module Git
     end
 
     def files_paths
+      # for now, don't need the Git::StatusFile
+      # only paths names
       layer.ls_files.keys
     end
 
     def local_remotes?
+      # well... yeah, i like to make people laugh
       layer.remotes.all? { |r| File.exists? r.url }
     end
 
     def can_cover?(path)
+      # is there any other way ?
+      # dunno for now
       File.exists? File.join(path, '.git')
     end
 
