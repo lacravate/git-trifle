@@ -74,6 +74,11 @@ module Git
       layer.branch(branch).delete
     end
 
+    def push_branch(branch=nil)
+      branch ||= current_branch
+      layer.push remote_for(branch), branch
+    end
+
     def pull_all_branches(options={})
       cover path: options[:path] if options[:path]
 

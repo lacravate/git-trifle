@@ -389,7 +389,7 @@ describe Git::Trifle do
     end
   end
 
-  describe 'commits' do
+  describe 'commits and push_branch' do
     before { git-trifle_from_scratch }
     let(:lousy_commit) {
       File.truncate File.join(public_dir, 'README.md'), 0
@@ -415,6 +415,7 @@ describe Git::Trifle do
     it "lists the commits of another branch" do
       subject.cover path: public_dir
 
+      # lousy commit
       lousy_commit
 
       subject.checkout 'Plop'
@@ -424,6 +425,34 @@ describe Git::Trifle do
       # incredible feature isn't it ?
       # but it's useful
       subject.commits(branch: '__w_all').size.should == 2
+    end
+
+    it "knows how to push a branch with no paramter" do
+      subject.cover path: public_dir
+      # this only to avoid pushing on remote current branch :
+      # when remote is non-bare, git refuses pushes on remote current branch
+      subject.checkout 'Plop'
+      # lousy commit
+      lousy_commit
+
+      subject.push_branch
+
+      # local and remote are sync'ed
+      subject.commits(branch: subject.current_branch).should =~ subject.commits(branch: subject.remote_branch_for(subject.current_branch))
+    end
+
+    it "knows how to push a branch with minimal paramters" do
+      subject.cover path: public_dir
+      # this only to avoid pushing on remote current branch :
+      # when remote is non-bare, git refuses pushes on remote current branch
+      subject.checkout 'Plop'
+      # lousy commit
+      lousy_commit
+
+      subject.push_branch 'Plop'
+
+      # local and remote are sync'ed
+      subject.commits(branch: '__w_all').should =~ subject.commits(branch: subject.remote_branch_for('__w_all'))
     end
   end
 
