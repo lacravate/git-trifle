@@ -2,18 +2,42 @@
 
 require 'git'
 
-# This is merely an abstract layer to Git to enable me to switch to
-# any other underlying lib' that would do the job
-# ... And present exactly what i need of Git in a convenient way
+# This is merely an abstract layer to Git
+# So far, i intend to have nothing more than a hand capable
+# of seizing handlers on the row, on the fly
+
+# My main goal here is to stick as little as possible to the
+# underlying git lib. I also want to be able to change if i
+# must as painlessly as possible
+#
+# That's why the code below is a bit of Enumerable fest
+# (to deplete the underlying lib of all class instances and
+# rather work on arrays of strings naming, paths, branches,
+# remotes, etc...)
+
+# As well, as i am hacking at the stuff, i want to present
+# exactly what i need of Git and its output in a convenient way
 
 module Git
 
   class Trifle
 
+    extend Forwardable
+
+    STATUS_LIST = [:changed, :added, :deleted, :untracked].freeze
+
+    # needless to do more than this for the following methods
+    # very neat BTW
+    DELEGATORS = %W|add branch current_branch commit fetch merge pull push reset remove|.
+      map(&:to_sym).
+      freeze
+
+    def_delegators :@layer, *DELEGATORS
+
     attr_reader :layer
 
+    # hands on the handler
     def cover(options)
-      # handler
       # Raise ?
       @layer = Git::Base.open options[:path] if can_cover?(options[:path])
     end
