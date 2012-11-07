@@ -18,7 +18,7 @@ describe Git::Trifle do
 
   # setup from scratch with that
   let(:git-trifle_options) { Hash[ clone_remote: clone_remote, clone_local: clone_local, remote: remote ] }
-  let(:git-trifle_from_scratch) { Git::Impartor.new.from_scratch git-trifle_options }
+  let(:git-trifle_from_scratch) { Git::Impartor.new.tap { |w| w.impart git-trifle_options } }
 
   #
 
@@ -138,11 +138,12 @@ describe Git::Trifle do
       subject.has_branch?('Plop').should be_true
     end
 
-    it "should not blast off when ask to checkout on a repo' with no commit" do
+    it "should not blast off when asked to checkout on a repo' with no commit" do
       FileUtils.mkdir_p '/tmp/spec/git-trifle/plop'
       t = described_class.new
       t.init path: '/tmp/spec/git-trifle/plop'
-      t.checkout('master').should be_false
+      # didn't do it, didn't die
+      t.checkout('plopinette').should be_false
     end
 
     it "should be able to switch to another existing branch" do
@@ -154,6 +155,7 @@ describe Git::Trifle do
 
       # i am quite a chatterbox, but i am out of words here
       # let me call captain Obvious...
+      # Captain !?
       subject.current_branch.should == 'Plop'
     end
 
