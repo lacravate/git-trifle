@@ -13,11 +13,11 @@ describe Git::Trifle do
 
   # git-trifle arch'
   let(:clone_remote) { '/tmp/spec/git-trifle/try' }
-  let(:public_dir) { '/tmp/spec/git-trifle/foal' }
+  let(:clone_local) { '/tmp/spec/git-trifle/foal' }
   let(:remote) { remote_dir }
 
   # setup from scratch with that
-  let(:git-trifle_options) { Hash[ clone_remote: clone_remote, public_dir: public_dir, remote: remote ] }
+  let(:git-trifle_options) { Hash[ clone_remote: clone_remote, clone_local: clone_local, remote: remote ] }
   let(:git-trifle_from_scratch) { Git::Impartor.new.from_scratch git-trifle_options }
 
   #
@@ -31,9 +31,9 @@ describe Git::Trifle do
     before { git-trifle_from_scratch }
 
     it "can open already existing repository" do
-      p = subject.cover path: public_dir
+      p = subject.cover path: clone_local
       # Trifle handles the last repository it opened
-      subject.directory.should == public_dir
+      subject.directory.should == clone_local
 
       h = subject.cover path: clone_remote
       # Trifle handles the last repository it opened
@@ -42,7 +42,7 @@ describe Git::Trifle do
       # Git::Base instances are different each time cover
       # is called
       p.should_not == h
-      p.should_not == subject.cover(path: public_dir)
+      p.should_not == subject.cover(path: clone_local)
     end
 
     it "doesn't blow itself off when asked to cover a directory that's not a repo'" do
@@ -101,7 +101,7 @@ describe Git::Trifle do
   describe 'checkout and branches' do
     before {
       git-trifle_from_scratch
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       # creates a Plop branch
       subject.checkout 'Plop'
       # HMV
@@ -178,7 +178,7 @@ describe Git::Trifle do
 
     context 'branch tracking and branch pulling' do
       before {
-        subject.cover path: public_dir
+        subject.cover path: clone_local
         subject.checkout 'Ploup'
         subject.push 'origin', 'Ploup'
         subject.checkout 'master'
@@ -294,12 +294,12 @@ describe Git::Trifle do
   describe 'status and alterations' do
     before {
       git-trifle_from_scratch
-      File.truncate File.join(public_dir, 'README.md'), 0
-      FileUtils.touch File.join(public_dir, 'Plopinou')
+      File.truncate File.join(clone_local, 'README.md'), 0
+      FileUtils.touch File.join(clone_local, 'Plopinou')
     }
 
     it "should be able to get the current status of a repo'" do
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       # files status as a Hash
       subject.status.should ==  { changed: ["README.md"], added: [], deleted: [], untracked: ['Plopinou'] }
       # a chosen subset of it
@@ -307,9 +307,9 @@ describe Git::Trifle do
     end
 
     it "should give a list of files according to git status" do
-      subject.cover path: public_dir
+      subject.cover path: clone_local
 
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       # other subsets of the status, returning only the files list
       subject.files_with_status(:untracked).should == ['Plopinou']
       subject.files_with_status(:added).should == []
@@ -319,7 +319,7 @@ describe Git::Trifle do
 
     it "should list the alterations by type" do
       # same as before, except that the filter is on files presence in lists
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       subject.alterations.should == { untracked: ['Plopinou'], changed: ['README.md'] }
       # another subset of the above-mentionned subset
       subject.alterations(status: :changed).should == { changed: ['README.md'] }
@@ -330,9 +330,9 @@ describe Git::Trifle do
     before {
       git-trifle_from_scratch
 
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       subject.checkout 'Plop'
-      File.truncate File.join(public_dir, 'README.md'), 0
+      File.truncate File.join(clone_local, 'README.md'), 0
       # add, commit, and push a file alteration to a new branch
       subject.push_file 'README.md'
     }
@@ -392,14 +392,14 @@ describe Git::Trifle do
   describe 'commits and push_branch' do
     before { git-trifle_from_scratch }
     let(:lousy_commit) {
-      File.truncate File.join(public_dir, 'README.md'), 0
+      File.truncate File.join(clone_local, 'README.md'), 0
       subject.add 'README.md'
       subject.commit "lousy test commit"
     }
 
     it "lists the commits chronologically" do
       # check initial context
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       first = subject.commits.first
       subject.commits.size.should == 1
 
@@ -413,7 +413,7 @@ describe Git::Trifle do
     end
 
     it "lists the commits of another branch" do
-      subject.cover path: public_dir
+      subject.cover path: clone_local
 
       # lousy commit
       lousy_commit
@@ -428,7 +428,7 @@ describe Git::Trifle do
     end
 
     it "knows how to push a branch with no paramter" do
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       # this only to avoid pushing on remote current branch :
       # when remote is non-bare, git refuses pushes on remote current branch
       subject.checkout 'Plop'
@@ -442,7 +442,7 @@ describe Git::Trifle do
     end
 
     it "knows how to push a branch with minimal paramters" do
-      subject.cover path: public_dir
+      subject.cover path: clone_local
       # this only to avoid pushing on remote current branch :
       # when remote is non-bare, git refuses pushes on remote current branch
       subject.checkout 'Plop'

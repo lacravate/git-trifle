@@ -8,11 +8,11 @@ require 'git'
 
 # My main goal here is to stick as little as possible to the
 # underlying git lib. I also want to be able to change if i
-# must as painlessly as possible
+# must, as painlessly as possible
 #
 # That's why the code below is a bit of Enumerable fest
-# (to deplete the underlying lib of all class instances and
-# rather work on arrays of strings naming, paths, branches,
+# (to deplete the underlying lib of all class instances, and
+# rather work on arrays of strings naming paths, branches,
 # remotes, etc...)
 
 # As well, as i am hacking at the stuff, i want to present
@@ -65,27 +65,50 @@ module Git
     end
 
     def create_branch(name, options={})
+      # go to bed Captain, we don't need you here
+      options[:track] = remote_branch_for(name) if options.delete :track_remote
+
+      # mere delegation with options
       layer.branch(name, options).create
     end
 
     def delete_branch(branch)
       # woodsman advice : dude, don't saw the branch you're on
       return if branch == current_branch
+      # actual mere delegation
       layer.branch(branch).delete
     end
 
     def push_branch(branch=nil)
+      # we don't need Captain Obvious here
+      # Rest Captain, greater tasks await you !
       branch ||= current_branch
       layer.push remote_for(branch), branch
     end
 
+    # not very apt method name...
+    # as we actually pull the current branch and
+    # get the fresher version of all the other remote branches
     def pull_all_branches(options={})
       cover path: options[:path] if options[:path]
 
       # freshen the repo'
       fetch
-      # updates the currennt branch
+
+      # updates the currennt branch and
+      # creates a local branch for each on the remote
       pull remote_for(current_branch), current_branch
+      all_branches_local
+    end
+
+    # there, an apt name. We want an up-to-date local branch
+    # for each remote one (hence the violent despotic delete)
+    def all_branches_local(options={})
+      cover path: options[:path] if options[:path]
+
+      # freshen the repo'
+      fetch
+
       # creates a local branch for each on the remote
       other_remote_branches.each do |branch|
         local = branch.split('/').last
@@ -96,17 +119,25 @@ module Git
 
     def checkout(name, options={})
       # avoid crash when repo' was just init'ed
-      return false unless any_commits?
+      return false unless can_checkout? name
+
       # 0 but true
       return true if name == current_branch
 
       # -b option on command line
-      options.merge! new_branch: true unless has_branch? name
+      options.merge! new_branch: true unless name.nil? || has_branch?(name)
 
       # wipe all options to let git to the job and checkout
       # tracking branch. YKWIM ? then DWIM
       options = {} if has_remote_branch? name
       layer.checkout name, options
+    end
+
+    # i know, it exists in Git gem. But i prefer having here
+    # with my own checkout method as a pivotal point for all
+    # checkouts (as long as it is accurate)
+    def checkout_files(files)
+      checkout nil, files: Array(files)
     end
 
     def checkout_w_branch(branch, options={})
@@ -121,15 +152,18 @@ module Git
       # not sure it's a good idea. We'll see...
       options[:branch] ||= current_branch
       options[:remote] ||= remote_for(options[:branch])
+
       # not sure of the option name. Well...
       options[:verb] ||= 'add'
 
       # not always a good idea to actually perform
       # a checkout here but i let checkout method know that
       checkout options[:branch]
-      # add || rm
+
+      # add || rm && commit
       send options[:verb], file
       commit "#{options[:verb]} #{file} (brought to you by #{self.class.name})"
+
       # Run Forrest, run !
       push options[:remote], options[:branch]
     end
@@ -142,16 +176,19 @@ module Git
     end
 
     def local_branches
+      # sorry, what ?
       layer.branches.local.map &:name
     end
 
     def remote_branches
+      # sorry, what now ?
       layer.branches.remote.map &:name
     end
 
     def remote_for(branch)
       # get out of here if i don't know you at all
       return unless has_branch? branch
+
       # ok you got me... I Perl'ed when i was younger
       remote_branches.
         map { |b| b.split '/' }. # returns a list of remote branch name elements
@@ -232,7 +269,7 @@ module Git
     def wipe_directory!
       # not too clever way to do that
       # i remove directories but try to avoid
-      # removinng the repo'
+      # removing the repo'
       files_paths.each do |f|
         f = File.join directory, f
         d = File.dirname f
@@ -264,8 +301,21 @@ module Git
       remote_branches.map { |b| b.split('/').last }.include? name
     end
 
-    def any_commits?
-      local_branches.any?
+    # if i can, i'll think of a more teenily tinily specific
+    # used-only-once method later on
+    def remote_branch_only?(name)
+      has_remote_branch?(name) && !has_local_branch?(name)
+    end
+
+    # do we have a remote branch or do we have at least one commit
+    # on this repo'
+    def can_checkout?(name)
+      has_remote_branch?(name) || local_branches.any?
+    end
+
+    # Potato Potato method, i love it
+    def any_remote?
+      layer.remotes.any?
     end
 
   end
