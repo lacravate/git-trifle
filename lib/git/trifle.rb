@@ -28,7 +28,7 @@ module Git
 
     # needless to do more than this for the following methods
     # very neat BTW
-    DELEGATORS = %W|add branch current_branch commit fetch merge pull push reset remove|.
+    DELEGATORS = %W|add branch current_branch commit fetch log merge pull push reset remove|.
       map(&:to_sym).
       freeze
 
@@ -137,7 +137,8 @@ module Git
     # with my own checkout method as a pivotal point for all
     # checkouts (as long as it is accurate)
     def checkout_files(files)
-      checkout nil, files: Array(files)
+      files = Array(files).select { |path| files_paths.include? path }
+      checkout nil, files: files if files
     end
 
     def checkout_w_branch(branch, options={})
@@ -169,10 +170,12 @@ module Git
     end
 
     def commits(options={})
+      options[:branch] ||= current_branch
+
       # yeah, reverse !
       # Because it's only in the Bible that i understand
       # why the first ones will be the last ones.
-      layer.log.object(options[:branch] || current_branch).map{ |commit| commit.sha }.reverse
+      log.object(options[:branch]).map(&:sha).reverse rescue []
     end
 
     def local_branches
