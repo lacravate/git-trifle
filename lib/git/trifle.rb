@@ -37,9 +37,9 @@ module Git
     attr_reader :layer
 
     # hands on the handler
-    def cover(options)
+    def cover(path)
       # Raise ?
-      @layer = Git::Base.open options[:path] if can_cover?(options[:path])
+      @layer = Git::Base.open path if can_cover? path
     end
 
     def clone(options)
@@ -90,7 +90,7 @@ module Git
     # as we actually pull the current branch and
     # get the fresher version of all the other remote branches
     def pull_all_branches(options={})
-      cover path: options[:path] if options[:path]
+      cover options[:path] if options[:path]
 
       # freshen the repo'
       fetch
@@ -104,7 +104,7 @@ module Git
     # there, an apt name. We want an up-to-date local branch
     # for each remote one (hence the violent despotic delete)
     def all_branches_local(options={})
-      cover path: options[:path] if options[:path]
+      cover options[:path] if options[:path]
 
       # freshen the repo'
       fetch
@@ -208,7 +208,7 @@ module Git
     end
 
     def remote_url(options={})
-      cover path: options[:path] if options[:path]
+      cover options[:path] if options[:path]
       # yucky ? Maybe... But funny as well...
       layer.remotes.select { |r| options[:name] ? r.name == options[:name] : true }.map(&:url).first
     end
@@ -236,7 +236,7 @@ module Git
     def alterations(options={})
       # which files have a status
       # represented as in status above
-      cover path: options[:path] if options[:path]
+      cover options[:path] if options[:path]
       status(options[:status]).select { |t, files| files.any? }
     end
 

@@ -31,22 +31,22 @@ describe Git::Trifle do
     before { git-trifle_from_scratch }
 
     it "can open already existing repository" do
-      p = subject.cover path: clone_local
+      p = subject.cover clone_local
       # Trifle handles the last repository it opened
       subject.directory.should == clone_local
 
-      h = subject.cover path: clone_remote
+      h = subject.cover clone_remote
       # Trifle handles the last repository it opened
       subject.directory.should == clone_remote
 
       # Git::Base instances are different each time cover
       # is called
       p.should_not == h
-      p.should_not == subject.cover(path: clone_local)
+      p.should_not == subject.cover(clone_local)
     end
 
     it "doesn't blow itself off when asked to cover a directory that's not a repo'" do
-      subject.cover(path: File.basename(clone_remote)).should be_nil
+      subject.cover(File.basename(clone_remote)).should be_nil
     end
   end
 
@@ -101,7 +101,7 @@ describe Git::Trifle do
   describe 'checkout and branches' do
     before {
       git-trifle_from_scratch
-      subject.cover path: clone_local
+      subject.cover clone_local
       # creates a Plop branch
       subject.checkout 'Plop'
       # HMV
@@ -180,7 +180,7 @@ describe Git::Trifle do
 
     context 'branch tracking and branch pulling' do
       before {
-        subject.cover path: clone_local
+        subject.cover clone_local
         subject.checkout 'Ploup'
         subject.push 'origin', 'Ploup'
         subject.checkout 'master'
@@ -301,7 +301,7 @@ describe Git::Trifle do
     }
 
     it "should be able to get the current status of a repo'" do
-      subject.cover path: clone_local
+      subject.cover clone_local
       # files status as a Hash
       subject.status.should ==  { changed: ["README.md"], added: [], deleted: [], untracked: ['Plopinou'] }
       # a chosen subset of it
@@ -309,9 +309,9 @@ describe Git::Trifle do
     end
 
     it "should give a list of files according to git status" do
-      subject.cover path: clone_local
+      subject.cover clone_local
 
-      subject.cover path: clone_local
+      subject.cover clone_local
       # other subsets of the status, returning only the files list
       subject.files_with_status(:untracked).should == ['Plopinou']
       subject.files_with_status(:added).should == []
@@ -321,7 +321,7 @@ describe Git::Trifle do
 
     it "should list the alterations by type" do
       # same as before, except that the filter is on files presence in lists
-      subject.cover path: clone_local
+      subject.cover clone_local
       subject.alterations.should == { untracked: ['Plopinou'], changed: ['README.md'] }
       # another subset of the above-mentionned subset
       subject.alterations(status: :changed).should == { changed: ['README.md'] }
@@ -332,7 +332,7 @@ describe Git::Trifle do
     before {
       git-trifle_from_scratch
 
-      subject.cover path: clone_local
+      subject.cover clone_local
       subject.checkout 'Plop'
       File.truncate File.join(clone_local, 'README.md'), 0
       # add, commit, and push a file alteration to a new branch
@@ -356,9 +356,9 @@ describe Git::Trifle do
     it "should be able to give the repo working directory" do
       # bleeding edge feature... Trifle instance knows how to
       # render a parameter passed to one of its methods
-      subject.cover path: '/tmp/spec/git-trifle/try'
+      subject.cover '/tmp/spec/git-trifle/try'
       subject.directory.should == '/tmp/spec/git-trifle/try'
-      subject.cover path:'/tmp/spec/git-trifle/foal'
+      subject.cover'/tmp/spec/git-trifle/foal'
       subject.directory.should == '/tmp/spec/git-trifle/foal'
     end
   end
@@ -367,7 +367,7 @@ describe Git::Trifle do
     before { git-trifle_from_scratch }
 
     it "should return the first, possibly matching, remote url" do
-      subject.cover path: '/tmp/spec/git-trifle/try'
+      subject.cover '/tmp/spec/git-trifle/try'
       # finds the remote url, gives away the first one if several are
       # found and you were not specific enough
       subject.remote_url.should == remote
@@ -376,12 +376,12 @@ describe Git::Trifle do
       # dunno that one buddy...
       subject.remote_url(name: 'plop').should be_nil
       # gold fish memory
-      subject.cover path:'/tmp/spec/git-trifle/foal'
+      subject.cover'/tmp/spec/git-trifle/foal'
       subject.remote_url.should == '/tmp/spec/git-trifle/try'
     end
 
     it "should be able to retrieve the remote name" do
-      subject.cover path: '/tmp/spec/git-trifle/try'
+      subject.cover '/tmp/spec/git-trifle/try'
       # once more, not specific enough buddy, i did what i could
       subject.remote_name.should == 'origin'
       # there you go !
@@ -401,7 +401,7 @@ describe Git::Trifle do
 
     it "lists the commits chronologically" do
       # check initial context
-      subject.cover path: clone_local
+      subject.cover clone_local
       first = subject.commits.first
       subject.commits.size.should == 1
 
@@ -415,7 +415,7 @@ describe Git::Trifle do
     end
 
     it "lists the commits of another branch" do
-      subject.cover path: clone_local
+      subject.cover clone_local
 
       # lousy commit
       lousy_commit
@@ -430,7 +430,7 @@ describe Git::Trifle do
     end
 
     it "knows how to push a branch with no paramter" do
-      subject.cover path: clone_local
+      subject.cover clone_local
       # this only to avoid pushing on remote current branch :
       # when remote is non-bare, git refuses pushes on remote current branch
       subject.checkout 'Plop'
@@ -444,7 +444,7 @@ describe Git::Trifle do
     end
 
     it "knows how to push a branch with minimal paramters" do
-      subject.cover path: clone_local
+      subject.cover clone_local
       # this only to avoid pushing on remote current branch :
       # when remote is non-bare, git refuses pushes on remote current branch
       subject.checkout 'Plop'
@@ -464,17 +464,17 @@ describe Git::Trifle do
       FileUtils.cp_r File.join(RSpec.configuration.fixtures_dir, 'files', 'Plip'), clone_remote
       # subject not available here ? Ok...
       # i like tap... Though it's perfectly unnecessary here. But i like it.
-      described_class.new.tap { |t| t.cover path: '/tmp/spec/git-trifle/try'; t.add 'Plip' }
+      described_class.new.tap { |t| t.cover '/tmp/spec/git-trifle/try'; t.add 'Plip' }
     }
 
     it "should give all the files tracked by git" do
-      subject.cover path: '/tmp/spec/git-trifle/try'
+      subject.cover '/tmp/spec/git-trifle/try'
       # lists the files, not the directories
       subject.files_paths.should =~ ['README.md', "Plip/Plap", "Plip/Plop"]
     end
 
     it "should wipe out all file in directory" do
-      subject.cover path: '/tmp/spec/git-trifle/try'
+      subject.cover '/tmp/spec/git-trifle/try'
       # everything must disappear
       subject.wipe_directory!
       Dir['/tmp/spec/git-trifle/try/*'].empty?.should be_true
@@ -497,7 +497,7 @@ describe Git::Trifle do
     it "should be able to tell if a path given holds a git repository" do
       # another a teenily tinily little shrivel short scope method
       # to wrap this select/map/reject/inject fest
-      subject.cover path: '/tmp/spec/git-trifle/foal'
+      subject.cover '/tmp/spec/git-trifle/foal'
       subject.local_remotes_only?.should be_true
     end
   end
