@@ -39,33 +39,48 @@ module Git
 
     def_delegators :@layer, *DELEGATORS
 
-    attr_reader :layer
+    def initialize(options={})
+      if options.is_a? String
+        cover options
+      elsif options[:clone]
+        clone options.merge!(remote: options[:clone])
+      elsif options[:init]
+        init options.merge!(path: options[:init])
+      end
+    end
 
     # hands on the handler
-    def cover(path)
-      # Raise ?
-      @layer = Git::Base.open path if can_cover? path
+    def cover(path, options={})
+      reset = options.delete :reset
+
+      cook_layer do
+        @dressing = reset && Proc.new { |trifle| trifle.reset if trifle.commits.any? }
+        Git::Base.open path if can_cover? path
+      end
     end
 
     def clone(options)
       path, name = File.split options[:path]
       remote = options.delete :remote
+      reset = options.delete :reset
 
-      # Dunno why i have to do that, but that's a fact. Ain't workin' without...
-      FileUtils.mkdir_p path
+      cook_layer do
+        # Dunno why i have to do that, but that's a fact. Ain't workin' without...
+        FileUtils.mkdir_p path
 
-      @layer = Git.clone remote, name, options.merge!(path: path)
+        @dressing = reset && Proc.new { |trifle| trifle.reset if trifle.commits.any? }
+        Git.clone remote, name, options.merge!(path: path)
+      end
     end
 
     def init(options)
       path = options.delete :path
       remote = options.delete :remote
-      remote_name = options.delete(:remote_name) { |k| 'origin' }
+      remote_name = options.delete(:remote_name) { 'origin' }
 
-      # i like tap
-      # set the remote if we have it
-      @layer = Git.init(path, options).tap do |git|
-        git.add_remote remote_name, remote if remote
+      cook_layer do
+        @dressing = remote && Proc.new { |trifle| trifle.add_remote remote_name, remote }
+        Git.init path, options
       end
     end
 
@@ -238,7 +253,7 @@ module Git
       # Status as Hash of arrays, keys are statuses
       types.inject({}) do |s, type|
         # i.g layer.status.changed and keys only to get the filenames
-        s.merge! type => layer.status.send(type).keys
+        s.merge! type => @layer.status.send(type).keys
       end
     end
 
@@ -276,6 +291,10 @@ module Git
       # the trinary with master is probably useless
       branch = has_branch?('master') ? 'master' : local_branches.first
       commits(branch: branch).first
+    end
+
+    def uncover!
+      @layer = nil
     end
 
     def wipe_directory!
@@ -340,6 +359,25 @@ module Git
     # Potato Potato method, i love it
     def any_remote?
       remotes.any?
+    end
+
+    def covers_anything?
+      !!@layer
+    end
+
+    def altered?
+      get_status != @status
+    end
+
+    private
+
+    def cook_layer
+      # i like tap. Did i say that already ?
+      tap do |trifle|
+        @layer = yield
+        @status = nil
+        @dressing.call(trifle) if @dressing
+      end
     end
 
   end
