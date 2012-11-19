@@ -39,14 +39,10 @@ describe Git::Trifle do
       # Trifle handles the last repository it opened
       subject.directory.should == clone_remote
 
-      # Git::Base instances are different each time cover
-      # is called
-      p.should_not == h
-      p.should_not == subject.cover(clone_local)
     end
 
     it "doesn't blow itself off when asked to cover a directory that's not a repo'" do
-      subject.cover(File.basename(clone_remote)).should be_nil
+      subject.cover(File.basename(clone_remote)).covers_anything?.should be_false
     end
   end
 
@@ -203,7 +199,7 @@ describe Git::Trifle do
       end
 
       it "creates a local branch tracking a remote for every remote branch" do
-        subject.pull_all_branches
+        subject.all_branches_local
 
         # for all the remote branches, an up-to-date local one is created
         subject.other_remote_branches.each do |branch|

@@ -103,31 +103,16 @@ module Git
       # we don't need Captain Obvious here
       # Rest Captain, greater tasks await you !
       branch ||= current_branch
-      layer.push remote_for(branch), branch
-    end
-
-    # not very apt method name...
-    # as we actually pull the current branch and
-    # get the fresher version of all the other remote branches
-    def pull_all_branches(options={})
-      cover options[:path] if options[:path]
-
-      # freshen the repo'
-      fetch
-
-      # updates the currennt branch and
-      # creates a local branch for each on the remote
-      pull remote_for(current_branch), current_branch
-      all_branches_local
+      push remote_for(branch), branch
     end
 
     # there, an apt name. We want an up-to-date local branch
     # for each remote one (hence the violent despotic delete)
-    def all_branches_local(options={})
-      cover options[:path] if options[:path]
-
+    def all_branches_local
       # freshen the repo'
       fetch
+
+      reset_to_remote_head!
 
       # creates a local branch for each on the remote
       other_remote_branches.each do |branch|
@@ -159,6 +144,10 @@ module Git
     def checkout_files(files)
       files = Array(files).select { |path| files_paths.include? path }
       checkout nil, files: files if files
+    end
+
+    def checkout_deleted_files
+      checkout_files files_with_status(:deleted)
     end
 
     def checkout_w_branch(branch, options={})
@@ -228,7 +217,6 @@ module Git
     end
 
     def remote_url(options={})
-      cover options[:path] if options[:path]
       # yucky ? Maybe... But funny as well...
       remotes.select { |r| options[:name] ? r.name == options[:name] : true }.map(&:url).first
     end
@@ -238,7 +226,8 @@ module Git
       remotes.select { |r| options[:url] ? r.url == options[:url] : true }.map(&:name).first
     end
 
-    def reset_to_remote_branch!
+    def reset_to_remote_head!
+      fetch
       reset remote_branch_for(current_branch)
     end
 
@@ -247,7 +236,7 @@ module Git
       remote_branches.reject { |branch| branch == 'origin/HEAD' || branch == remote_branch_for(current_branch) }
     end
 
-    def status(type=nil)
+    def get_status(type=nil)
       types = (type && STATUS_LIST.include?(type)) ? [type] : STATUS_LIST
 
       # Status as Hash of arrays, keys are statuses
@@ -257,11 +246,22 @@ module Git
       end
     end
 
+    def status(*args)
+      @status = get_status(*args)
+    end
+
     def alterations(options={})
       # which files have a status
       # represented as in status above
-      cover options[:path] if options[:path]
-      status(options[:status]).select { |t, files| files.any? }
+      if block_given?
+        status(options[:status]).select { |t, files| files.any? }.each do |type, files|
+          files.each do |file|
+            yield type, file
+          end
+        end
+      else
+        status(options[:status]).select { |t, files| files.any? }
+      end
     end
 
     def files_with_status(s)
@@ -269,10 +269,8 @@ module Git
       status(s).values.flatten
     end
 
-    def ls_tree(options={})
-      # do i use that ?
-      sha = options.delete(:sha) { current_branch }
-      layer.ls_tree(sha, options).values.map(&:keys).flatten
+    def file_with_status(file, s)
+      files_with_status(s).include? file
     end
 
     def directory
