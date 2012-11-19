@@ -456,6 +456,28 @@ describe Git::Trifle do
       # local and remote are sync'ed
       subject.commits(branch: '__w_all').should =~ subject.commits(branch: subject.remote_branch_for('__w_all'))
     end
+
+    context 'has_updates?' do
+      before {
+        FileUtils.touch File.join(clone_remote, 'README.md')
+        subject.cover clone_remote
+        subject.add 'README.md'
+        subject.commit "lousy test commit"
+        subject.cover clone_local
+        subject.fetch
+      }
+
+      it "knows when remote has pending updates" do
+        # on current branch
+        subject.has_updates?.should be_true
+        # on a branch that has updates
+        subject.has_updates?('__w_all').should be_true
+        # on a branch that has no update
+        subject.has_updates?('master').should be_false
+        # on a non-existing branch
+        subject.has_updates?('Plop').should be_nil
+      end
+    end
   end
 
   describe 'files_paths related' do

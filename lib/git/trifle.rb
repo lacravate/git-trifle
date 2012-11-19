@@ -28,9 +28,14 @@ module Git
 
     # needless to do more than this for the following methods
     # very neat BTW
-    DELEGATORS = %W|add branch current_branch commit fetch log merge pull push reset remove|.
-      map(&:to_sym).
-      freeze
+    DELEGATORS = %W|
+      add_remote add branch branches
+      current_branch commit dir fetch
+      log ls_files merge pull push
+      reset remotes remove
+    |.
+    map(&:to_sym).
+    freeze
 
     def_delegators :@layer, *DELEGATORS
 
@@ -69,14 +74,14 @@ module Git
       options[:track] = remote_branch_for(name) if options.delete :track_remote
 
       # mere delegation with options
-      layer.branch(name, options).create
+      branch(name, options).create
     end
 
     def delete_branch(branch)
       # woodsman advice : dude, don't saw the branch you're on
       return if branch == current_branch
       # actual mere delegation
-      layer.branch(branch).delete
+      branch(branch).delete
     end
 
     def push_branch(branch=nil)
@@ -130,7 +135,7 @@ module Git
       # wipe all options to let git to the job and checkout
       # tracking branch. YKWIM ? then DWIM
       options = {} if has_remote_branch? name
-      layer.checkout name, options
+      @layer.checkout name, options
     end
 
     # i know, it exists in Git gem. But i prefer having here
@@ -180,12 +185,12 @@ module Git
 
     def local_branches
       # sorry, what ?
-      layer.branches.local.map &:name
+      branches.local.map &:name
     end
 
     def remote_branches
       # sorry, what now ?
-      layer.branches.remote.map &:name
+      branches.remote.map &:name
     end
 
     def remote_for(branch)
@@ -210,12 +215,16 @@ module Git
     def remote_url(options={})
       cover options[:path] if options[:path]
       # yucky ? Maybe... But funny as well...
-      layer.remotes.select { |r| options[:name] ? r.name == options[:name] : true }.map(&:url).first
+      remotes.select { |r| options[:name] ? r.name == options[:name] : true }.map(&:url).first
     end
 
     def remote_name(options={})
       # yucky ? Maybe... But funny as well...
-      layer.remotes.select { |r| options[:url] ? r.url == options[:url] : true }.map(&:name).first
+      remotes.select { |r| options[:url] ? r.url == options[:url] : true }.map(&:name).first
+    end
+
+    def reset_to_remote_branch!
+      reset remote_branch_for(current_branch)
     end
 
     def other_remote_branches
@@ -254,12 +263,12 @@ module Git
     def directory
       # explanation here ?
       # Really ?
-      layer.dir.to_s
+      dir.to_s
     end
 
     def files_paths
       # for now, need only paths names
-      layer.ls_files.keys
+      ls_files.keys
     end
 
     def initial_commit
@@ -282,13 +291,25 @@ module Git
 
     def local_remotes_only?
       # well... yeah, i like to make people laugh
-      layer.remotes.all? { |r| File.exists? r.url }
+      remotes.all? { |r| File.exists? r.url }
     end
 
     def can_cover?(path)
       # is there any other way ?
       # dunno for now
       File.exists? File.join(path, '.git')
+    end
+
+    def has_updates?(branch=nil)
+      branch ||= current_branch
+      fetch
+
+      # do and return nothing unless... Well, you can read that
+      # all by yourself
+      return unless has_local_branch?(branch) && has_remote_branch?(branch)
+
+      # potential difference between local and remote
+      commits(branch: branch) != commits(branch: remote_branch_for(branch))
     end
 
     def has_branch?(name)
@@ -318,7 +339,7 @@ module Git
 
     # Potato Potato method, i love it
     def any_remote?
-      layer.remotes.any?
+      remotes.any?
     end
 
   end
