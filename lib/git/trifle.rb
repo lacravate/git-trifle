@@ -40,6 +40,7 @@ module Git
     def_delegators :@layer, *DELEGATORS
 
     def initialize(options={})
+      @dressing = []
       if options.is_a? String
         cover options
       elsif options[:clone]
@@ -54,7 +55,7 @@ module Git
       reset = options.delete :reset
 
       cook_layer do
-        @dressing = reset && Proc.new { |trifle| trifle.reset if trifle.commits.any? }
+        @dressing << Proc.new { self.reset if commits.any? } if reset
         Git::Base.open path if can_cover? path
       end
     end
@@ -68,7 +69,7 @@ module Git
         # Dunno why i have to do that, but that's a fact. Ain't workin' without...
         FileUtils.mkdir_p path
 
-        @dressing = reset && Proc.new { |trifle| trifle.reset if trifle.commits.any? }
+        @dressing << Proc.new { self.reset if commits.any? } if reset
         Git.clone remote, name, options.merge!(path: path)
       end
     end
@@ -79,7 +80,7 @@ module Git
       remote_name = options.delete(:remote_name) { 'origin' }
 
       cook_layer do
-        @dressing = remote && Proc.new { |trifle| trifle.add_remote remote_name, remote }
+        @dressing << Proc.new { self.add_remote remote_name, remote } if remote
         Git.init path, options
       end
     end
@@ -150,6 +151,10 @@ module Git
       checkout_files files_with_status(:deleted)
     end
 
+    def checkout_changed_files
+      checkout_files files_with_status(:changed)
+    end
+
     def checkout_w_branch(branch, options={})
       # a git-trifle branch always stems from initial commit
       # so enforce this if it does not exist yet
@@ -185,6 +190,10 @@ module Git
       # Because it's only in the Bible that i understand
       # why the first ones will be the last ones.
       log.object(options[:branch]).map(&:sha).reverse rescue []
+    end
+
+    def file_was_ever_known?(path)
+      log.path(path).map(&:sha).any? rescue []
     end
 
     def local_branches
@@ -266,7 +275,13 @@ module Git
 
     def files_with_status(s)
       # i like being specific
-      status(s).values.flatten
+      if block_given?
+        alterations(status: s) do |type, file|
+          yield file
+        end
+      else
+        alterations(status: s).values.flatten
+      end
     end
 
     def file_with_status(file, s)
@@ -277,6 +292,10 @@ module Git
       # explanation here ?
       # Really ?
       dir.to_s
+    end
+
+    def full_path(path)
+      File.join directory, path
     end
 
     def files_paths
@@ -293,6 +312,10 @@ module Git
 
     def uncover!
       @layer = nil
+    end
+
+    def wipe_file(path)
+      FileUtils.rm_f full_path(path)
     end
 
     def wipe_directory!
@@ -374,7 +397,7 @@ module Git
       tap do |trifle|
         @layer = yield
         @status = nil
-        @dressing.call(trifle) if @dressing
+        @dressing.shift.call while @dressing.any?
       end
     end
 
