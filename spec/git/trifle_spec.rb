@@ -453,12 +453,17 @@ describe Git::Trifle do
       subject.commits(branch: '__w_all').should =~ subject.commits(branch: subject.remote_branch_for('__w_all'))
     end
 
-    context 'has_updates?' do
+    context 'remote has updates' do
       before {
         FileUtils.touch File.join(clone_remote, 'README.md')
+        FileUtils.touch File.join(clone_remote, 'lousy_lousy')
+        FileUtils.touch File.join(clone_local, 'lousy_lousy_lousy')
+
         subject.cover clone_remote
         subject.add 'README.md'
+        subject.add 'lousy_lousy'
         subject.commit "lousy test commit"
+
         subject.cover clone_local
         subject.fetch
       }
