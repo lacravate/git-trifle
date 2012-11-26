@@ -41,6 +41,7 @@ module Git
 
     def initialize(options={})
       @dressing = []
+
       if options.is_a? String
         cover options
       elsif options[:clone]
@@ -193,7 +194,7 @@ module Git
     end
 
     def file_was_ever_known?(path)
-      log.path(path).map(&:sha).any? rescue []
+      log.path(path).any?
     end
 
     def local_branches
