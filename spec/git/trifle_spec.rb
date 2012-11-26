@@ -5,16 +5,12 @@ require 'spec_helper'
 describe Git::Trifle do
 
   let(:trifle) { described_class.new }
-
-  # characteristics of the un-remote remote
-  let(:remote_url) { 'https://github.com/lacravate/git-trifle.git' }
-  let(:remote_dir) { '/tmp/spec/git-trifle/git-trifle' }
-  let(:remote_clone) { trifle.clone remote: remote_url, path: remote_dir }
+  let(:unremote) { Git::UnremoteRemote.new }
 
   # git-trifle arch'
   let(:clone_remote) { '/tmp/spec/git-trifle/try' }
   let(:clone_local) { '/tmp/spec/git-trifle/foal' }
-  let(:remote) { remote_dir }
+  let(:remote) { unremote.clone_dir }
 
   # setup from scratch with that
   let(:git-trifle_options) { Hash[ clone_remote: clone_remote, clone_local: clone_local, remote: remote ] }
@@ -23,8 +19,7 @@ describe Git::Trifle do
   #
 
   before {
-    FileUtils.rm_rf remote_dir
-    remote_clone
+    unremote.fresh_start
   }
 
   describe 'cover' do
