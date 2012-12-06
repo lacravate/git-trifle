@@ -29,8 +29,8 @@ module Git
     # needless to do more than this for the following methods
     # very neat BTW
     DELEGATORS = %W|
-      add_remote add branch branches
-      current_branch commit dir fetch
+      add add_remote apply branch branches
+      current_branch commit dir diff fetch
       log ls_files merge pull push
       reset remotes remove
     |.
