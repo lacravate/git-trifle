@@ -1,7 +1,5 @@
 # encoding: utf-8
 
-require 'git'
-
 # This is merely an abstract layer to Git
 # So far, i intend to have nothing more than a hand capable
 # of seizing handlers on the row, on the fly
@@ -12,11 +10,8 @@ require 'git'
 #
 # That's why the code below is a bit of Enumerable fest
 # (to deplete the underlying lib of all class instances, and
-# rather work on arrays of strings naming paths, branches,
-# remotes, etc...)
-
-# As well, as i am hacking at the stuff, i want to present
-# exactly what i need of Git and its output in a convenient way
+# rather work on arrays of strings (paths names, branches
+# names, remotes names, commit sha, etc...)
 
 module Git
 
@@ -26,12 +21,16 @@ module Git
 
     STATUS_LIST = [:changed, :added, :deleted, :untracked].freeze
 
-    # needless to do more than this for the following methods
-    # very neat BTW
+    # Needless to do more than this for the following methods
+    # Very neat BTW.
     DELEGATORS = %W|
-      add add_remote apply branch branches
-      current_branch commit dir diff fetch
-      log ls_files merge pull push
+      add add_remote apply
+      branch branches
+      current_branch commit
+      fetch
+      log ls_files
+      merge
+      pull push
       reset remotes remove
     |.
     map(&:to_sym).
@@ -108,22 +107,6 @@ module Git
       push remote_for(branch), branch
     end
 
-    # there, an apt name. We want an up-to-date local branch
-    # for each remote one (hence the violent despotic delete)
-    def all_branches_local
-      # freshen the repo'
-      fetch
-
-      reset_to_remote_head!
-
-      # creates a local branch for each on the remote
-      other_remote_branches.each do |branch|
-        local = branch.split('/').last
-        delete_branch local if has_local_branch? local
-        create_branch local, track: branch
-      end
-    end
-
     def checkout(name, options={})
       # avoid crash when repo' was just init'ed
       return false unless can_checkout? name
@@ -156,13 +139,6 @@ module Git
       checkout_files files_with_status(:changed)
     end
 
-    def checkout_w_branch(branch, options={})
-      # a git-trifle branch always stems from initial commit
-      # so enforce this if it does not exist yet
-      options.merge!(commit: initial_commit) unless has_branch? branch
-      checkout branch, options
-    end
-
     def push_file(file, options={})
       # yeah yeah i allow to push on another branch in one line
       # not sure it's a good idea. We'll see...
@@ -191,6 +167,10 @@ module Git
       # Because it's only in the Bible that i understand
       # why the first ones will be the last ones.
       log.object(options[:branch]).map(&:sha).reverse rescue []
+    end
+
+    def diff(commits)
+      @layer.diff(*commits).to_s
     end
 
     def file_was_ever_known?(path)
@@ -241,11 +221,6 @@ module Git
       reset remote_branch_for(current_branch)
     end
 
-    def other_remote_branches
-      # i like to make myself laugh as well
-      remote_branches.reject { |branch| branch == 'origin/HEAD' || branch == remote_branch_for(current_branch) }
-    end
-
     def get_status(type=nil)
       types = (type && STATUS_LIST.include?(type)) ? [type] : STATUS_LIST
 
@@ -292,7 +267,7 @@ module Git
     def directory
       # explanation here ?
       # Really ?
-      dir.to_s
+      @layer.dir.to_s
     end
 
     def full_path(path)

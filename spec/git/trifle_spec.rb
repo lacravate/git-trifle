@@ -5,16 +5,17 @@ require 'spec_helper'
 describe Git::Trifle do
 
   let(:trifle) { described_class.new }
-  let(:unremote) { Git::UnremoteRemote.new }
+  let(:unremote) { Git::Trifle::UnremoteRemote.new }
 
   # git-trifle arch'
   let(:clone_remote) { '/tmp/spec/git-trifle/try' }
   let(:clone_local) { '/tmp/spec/git-trifle/foal' }
   let(:remote) { unremote.clone_dir }
 
-  # setup from scratch with that
-  let(:git-trifle_options) { Hash[ clone_remote: clone_remote, clone_local: clone_local, remote: remote ] }
-  let(:git-trifle_from_scratch) { Git::Impartor.new.tap { |w| w.impart git-trifle_options } }
+  let(:trifle_repos) {
+    trifle.clone path: clone_remote, remote: remote
+    trifle.clone path: clone_local, remote: clone_remote 
+  }
 
   #
 
@@ -23,7 +24,7 @@ describe Git::Trifle do
   }
 
   describe 'cover' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
 
     it "can open already existing repository" do
       p = subject.cover clone_local
@@ -91,19 +92,13 @@ describe Git::Trifle do
 
   describe 'checkout and branches' do
     before {
-      git-trifle_from_scratch
+      trifle_repos
       subject.cover clone_local
       # creates a Plop branch
       subject.checkout 'Plop'
       # HMV
       subject.checkout 'master'
     }
-
-    it "gives a list of remote branches names except current" do
-      # useful and self-explanatory
-      # otherwise i really can't do anything for you
-      subject.other_remote_branches.should == ["origin/__w_all"]
-    end
 
     it "can retrieve the remote branch name" do
       # master was pushed on remote named origin
@@ -162,11 +157,11 @@ describe Git::Trifle do
     end
 
     it "should return the list of local branches" do
-      subject.local_branches.should =~ ['Plop', 'master', '__w_all']
+      subject.local_branches.should =~ ['Plop', 'master']
     end
 
     it "should return the list of remote branches" do
-      subject.remote_branches.should =~ ['origin/HEAD', 'origin/master', 'origin/__w_all']
+      subject.remote_branches.should =~ ['origin/HEAD', 'origin/master']
     end
 
     context 'branch tracking and branch pulling' do
@@ -193,18 +188,6 @@ describe Git::Trifle do
         subject.commits(branch: 'Ploup').should =~ subject.commits(branch: 'origin/Ploup')
       end
 
-      it "creates a local branch tracking a remote for every remote branch" do
-        subject.all_branches_local
-
-        # for all the remote branches, an up-to-date local one is created
-        subject.other_remote_branches.each do |branch|
-          # well, yeah... That has to be amended
-          local = branch.split('/').last
-          # tracking branch is created
-          subject.has_local_branch?(local).should be_true
-          subject.commits(branch: branch).should =~ subject.commits(branch: local)
-        end
-      end
     end
 
     context "checkout from a certain commit" do
@@ -251,42 +234,11 @@ describe Git::Trifle do
       end
     end
 
-    context 'checkout_w_branch' do
-      before {
-        FileUtils.touch File.join(subject.directory, "Plep")
-        subject.push_file "Plep", branch: "Plop"
-        subject.checkout 'master'
-        subject.branch('Plop').delete
-      }
-
-      it "should create a new branch with one initial commit" do
-        # git-trifle branch are named differently
-        # but it's not a design so far, and it's irrelevant here
-        subject.checkout_w_branch 'Plip'
-        subject.current_branch.should == 'Plip'
-        # design is there, a git-trifle branch stems from the initial commit
-        subject.commits.size.should == 1
-        subject.commits.first.should == subject.commits(branch: 'master').first
-      end
-
-      it "should checkout a branch tracking the remote one of the same name" do
-        subject.has_local_branch?('Plop').should be_false
-
-        subject.checkout_w_branch 'Plop'
-
-        # checkout_w_branch behaves like a mere checkout when
-        # remote branch exists
-        subject.current_branch.should == 'Plop'
-        subject.commits.size.should == 2
-        subject.commits.last.should_not == subject.commits(branch: 'master').first
-        subject.commits(branch: 'origin/Plop').should =~ subject.commits
-      end
-    end
   end
 
   describe 'status and alterations' do
     before {
-      git-trifle_from_scratch
+      trifle_repos
       File.truncate File.join(clone_local, 'README.md'), 0
       FileUtils.touch File.join(clone_local, 'Plopinou')
     }
@@ -321,7 +273,7 @@ describe Git::Trifle do
 
   describe 'push file' do
     before {
-      git-trifle_from_scratch
+      trifle_repos
 
       subject.cover clone_local
       subject.checkout 'Plop'
@@ -342,7 +294,7 @@ describe Git::Trifle do
   end
 
   describe 'directory' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
 
     it "should be able to give the repo working directory" do
       # bleeding edge feature... Trifle instance knows how to
@@ -355,7 +307,7 @@ describe Git::Trifle do
   end
 
   describe 'remote_url' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
 
     it "should return the first, possibly matching, remote url" do
       subject.cover '/tmp/spec/git-trifle/try'
@@ -383,7 +335,7 @@ describe Git::Trifle do
   end
 
   describe 'commits and push_branch' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
     let(:lousy_commit) {
       File.truncate File.join(clone_local, 'README.md'), 0
       subject.add 'README.md'
@@ -417,7 +369,7 @@ describe Git::Trifle do
       subject.commits.size.should == 2
       # incredible feature isn't it ?
       # but it's useful
-      subject.commits(branch: '__w_all').size.should == 2
+      subject.commits(branch: 'master').size.should == 2
     end
 
     it "knows how to push a branch with no paramter" do
@@ -445,16 +397,19 @@ describe Git::Trifle do
       subject.push_branch 'Plop'
 
       # local and remote are sync'ed
-      subject.commits(branch: '__w_all').should =~ subject.commits(branch: subject.remote_branch_for('__w_all'))
+      subject.commits(branch: 'Plop').should =~ subject.commits(branch: subject.remote_branch_for('Plop'))
     end
 
     context 'remote has updates' do
       before {
+        subject.cover clone_remote
+        subject.checkout 'Plip'
+        subject.checkout 'master'
+
         FileUtils.touch File.join(clone_remote, 'README.md')
         FileUtils.touch File.join(clone_remote, 'lousy_lousy')
         FileUtils.touch File.join(clone_local, 'lousy_lousy_lousy')
 
-        subject.cover clone_remote
         subject.add 'README.md'
         subject.add 'lousy_lousy'
         subject.commit "lousy test commit"
@@ -466,10 +421,10 @@ describe Git::Trifle do
       it "knows when remote has pending updates" do
         # on current branch
         subject.has_updates?.should be_true
-        # on a branch that has updates
-        subject.has_updates?('__w_all').should be_true
+        # more specifically master
+        subject.has_updates?('master').should be_true
         # on a branch that has no update
-        subject.has_updates?('master').should be_false
+        subject.has_updates?('Plip').should be_false
         # on a non-existing branch
         subject.has_updates?('Plop').should be_nil
       end
@@ -478,8 +433,8 @@ describe Git::Trifle do
 
   describe 'files_paths related' do
     before {
-      git-trifle_from_scratch
-      FileUtils.cp_r File.join(RSpec.configuration.fixtures_dir, 'files', 'Plip'), clone_remote
+      trifle_repos
+      unremote.fixtures('Plip', clone_remote)
       # subject not available here ? Ok...
       # i like tap... Though it's perfectly unnecessary here. But i like it.
       described_class.new.tap { |t| t.cover '/tmp/spec/git-trifle/try'; t.add 'Plip' }
@@ -500,7 +455,7 @@ describe Git::Trifle do
   end
 
   describe 'can_cover?' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
 
     it "should be able to tell if a path given holds a git repository" do
       # to avoid blowing out in the ether, dirty, when false
@@ -510,7 +465,7 @@ describe Git::Trifle do
   end
 
   describe 'local_remotes_only?' do
-    before { git-trifle_from_scratch }
+    before { trifle_repos }
 
     it "should be able to tell if a path given holds a git repository" do
       # another a teenily tinily little shrivel short scope method
