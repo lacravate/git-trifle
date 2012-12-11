@@ -169,8 +169,9 @@ module Git
       log.object(options[:branch]).map(&:sha).reverse rescue []
     end
 
-    def diff(commits)
-      @layer.diff(*commits).to_s
+    # So far, only two commits diff is implemented
+    def diff(first, second)
+      @layer.diff(first, second).to_s
     end
 
     def file_was_ever_known?(path)

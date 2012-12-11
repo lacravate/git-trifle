@@ -334,13 +334,33 @@ describe Git::Trifle do
     end
   end
 
-  describe 'commits and push_branch' do
+  describe 'commits, diff and push_branch' do
     before { trifle_repos }
     let(:lousy_commit) {
-      File.truncate File.join(clone_local, 'README.md'), 0
+      File.open(File.join(clone_local, 'README.md'), 'w') { |f| f.write "\n" }
       subject.add 'README.md'
       subject.commit "lousy test commit"
     }
+
+    it "knows how to issue a diff between two commits" do
+      expected_diff =  [
+        "diff --git a/README.md b/README.md",
+        "index 42061c0..8b13789 100644",
+        "--- a/README.md",
+        "+++ b/README.md",
+        "@@ -1 +1 @@",
+        "-README.md",
+        "\\ No newline at end of file",
+        "+"
+      ].join("\n")
+
+      subject.cover clone_local
+
+      # lousy commit
+      lousy_commit
+
+      subject.diff(*subject.commits[-2..-1]).should == expected_diff
+    end
 
     it "lists the commits chronologically" do
       # check initial context
