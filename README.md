@@ -34,7 +34,7 @@ t = Git::Trifle.new clone: 'https://github.com/lacravate/git-trifle', path: 'pat
 t = Git::Trifle.new init: 'path', remote: 'https://github.com/lacravate/git-trifle' 
 
 # you don't need an instance per repo' (up to you)
-# and switch the handler from on repo' to the other
+# and switch the handler from one repo' to the other
 t.cover 'repo_path'
 t.alterations do |type, file|
   puts "#{file} was created in working directory" if type == :untracked
