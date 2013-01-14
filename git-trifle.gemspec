@@ -17,6 +17,6 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.rubyforge_project = '[none]'
 
-  s.add_dependency "ruby-git-lacravate"
+  s.add_dependency "ruby-git-lacravate", "~> 0.0.2"
   s.add_development_dependency "rspec"
 end
